@@ -6,4 +6,5 @@ Output-- accuracy percentages
 
 
 Yours truly,
-/amyhanv/ and /mbaart/
+
+amyhanv and mbaart
