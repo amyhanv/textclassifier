@@ -48,12 +48,11 @@ def calc_cond_probabilities(model, wise_count, pred_count, sum_wise, sum_pred):
 
     for word in model:
         if word not in cond_probabilities:
-            cond_probabilities[word] = [0,0]
+            cond_probabilities[word] = [0, 0]
+
         #calculate conditional probabilities P(word|wise) & P(word|prediction)
         cond_probabilities[word][0] = (model[word][0] + 1)/(sum_wise + len(model))
         cond_probabilities[word][1] = (model[word][1] + 1)/(sum_pred + len(model))
-
-    print(cond_probabilities)
 
     return cond_probabilities
 
@@ -62,8 +61,8 @@ def classify_test_data(test_data_saying, prob_wise, prob_pred, cond_probs):
     temp_pred = 1
     for word in test_data_saying:
         if word in model:
-            temp_wise *= pow(cond_probs[word][0], model[word][0])
-            temp_pred *= pow(cond_probs[word][1], model[word][1])
+            temp_wise *= cond_probs[word][0]
+            temp_pred *= cond_probs[word][1]
 
     temp_wise *= prob_wise
     temp_pred *= prob_pred
@@ -76,7 +75,7 @@ if __name__ == '__main__':
     model = {}
 
     train_data, train_labels = get_data("traindata.txt", "trainlabels.txt")
-    train_model, train_wise_count, train_prediction_count, size_wise, size_prediction = train_model(train_data, train_labels)
+    train_model, train_wise_count, train_prediction_count, tot_wise_words, tot_pred_words = train_model(train_data, train_labels)
     
     #P(c) & P(-c)
     probablility_wise = train_wise_count/(train_wise_count + train_prediction_count)
@@ -84,16 +83,22 @@ if __name__ == '__main__':
 
     #P(Chinese|c),... etc
     conditional_probabilities = {}
-    conditional_probabilities = calc_cond_probabilities(train_model, train_wise_count, train_prediction_count, size_wise, size_prediction)
+    conditional_probabilities = calc_cond_probabilities(train_model, train_wise_count, train_prediction_count, tot_wise_words, tot_pred_words)
     
     # Setup test data
-    # test_data, test_labels = get_data("testdata.txt", "testlabels.txt")
     test_data, test_labels = get_data("traindata.txt", "trainlabels.txt")
-
 
     result = []
     for i, saying in enumerate(test_data):
         words = saying.split(' ')
         result.append(classify_test_data(words, probablility_wise, probablility_prediction, conditional_probabilities))
 
-    print(result)
+    correct = 0
+    incorrect = 0
+    for i, j in zip(result, train_labels):
+        if int(i) == int(j):
+            correct += 1
+        else:
+            incorrect += 1
+
+    print("Accuracy: " + str((correct/len(train_labels))*100))
