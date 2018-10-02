@@ -86,7 +86,7 @@ if __name__ == '__main__':
     conditional_probabilities = calc_cond_probabilities(train_model, train_wise_count, train_prediction_count, tot_wise_words, tot_pred_words)
     
     # Setup test data
-    test_data, test_labels = get_data("traindata.txt", "trainlabels.txt")
+    test_data, test_labels = get_data("testdata.txt", "testlabels.txt")
 
     result = []
     for i, saying in enumerate(test_data):
@@ -95,10 +95,10 @@ if __name__ == '__main__':
 
     correct = 0
     incorrect = 0
-    for i, j in zip(result, train_labels):
+    for i, j in zip(result, test_labels):
         if int(i) == int(j):
             correct += 1
         else:
             incorrect += 1
 
-    print("Accuracy: " + str((correct/len(train_labels))*100))
+    print("Accuracy: " + str((correct/len(test_labels))*100))
