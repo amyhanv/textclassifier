@@ -42,9 +42,30 @@ def create_model(data, labels):
     return model, wise_count, futuristic_count
 
 
+def calc_probability(model, wise_count, futuristic_count, words_array):
+    wise_probability = 1
+    futuristic_probability = 1
+
+    for word in words_array:
+
+        count = model.get(word)
+
+        if count is None:
+            wise_top = 1
+            futuristic_top = 1
+            
+        wise_top = count[0] + 1
+        futuristic_top = count[1] + 1
 
 
 
+        wise_bot = wise_count + len(model)
+        futuristic_bot = futuristic_count + len(model)
+
+        wise_probability *= wise_top / wise_bot
+        futuristic_probability *= futuristic_top / futuristic_bot
+
+        print(wise_top)
 
 if __name__ == '__main__':
     model = {}
@@ -60,6 +81,9 @@ if __name__ == '__main__':
     test_data, test_labels = open_files(testdata_file, testlabel_file)
     test_model, test_wise_count, test_futuristic_count = create_model(test_data, test_labels)
 
+    for i, sentence in enumerate(test_data):
+        words_array = sentence.split(' ')
+        calc_probability(test_model, test_wise_count, test_futuristic_count, words_array)
 
 
     print(train_model)
