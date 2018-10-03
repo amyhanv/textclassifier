@@ -1,95 +1,150 @@
 # Michael Baart v00199818
 # Amy Hanvoravongchai v00822271
 
-
 import os
 import re
 import string
 import math
+import sys
 
+def get_data(data_file, label_file):
 
-def open_files(datafile, labelfile):
-
-    with open(datafile) as f:
+    with open(data_file) as f:
         data = f.readlines()
-        data = [x.strip() for x in data]
 
-    with open(labelfile) as g:
+    with open(label_file) as g:
         labels = g.readlines()
-        labels = [x.strip() for x in labels]
 
-    return data,labels
+    data = [x.strip() for x in data]
+    labels = [x.strip() for x in labels]
 
-def create_model(data, labels):
+    return data, labels
 
-    wise_count= 0
-    futuristic_count = 0
+def train_model(data, labels):
+
+    sum_words_wise = 0
+    sum_words_prediction = 0
+    wise_count = 0
+    prediction_count = 0
 
     data = [x.split() for x in data]
     for i, sentence in enumerate(data):
         for word in sentence:
-            if word in model:
-                model[word][int(labels[i])] += 1
-            else:
+            if word not in model:
                 model[word] = [0, 0]
-                model[word][int(labels[i])] = 1
+
+            model[word][int(labels[i])] += 1
 
         if int(labels[i]) == 0:
+            sum_words_wise += len(sentence)
             wise_count += 1
         else:
-            futuristic_count += 1
+            sum_words_prediction += len(sentence)
+            prediction_count += 1
 
-    return model, wise_count, futuristic_count
+    return model, wise_count, prediction_count, sum_words_wise, sum_words_prediction
 
+def calc_cond_probabilities(model, wise_count, pred_count, sum_wise, sum_pred):
+    cond_probabilities = {}
 
-def calc_probability(model, wise_count, futuristic_count, words_array):
-    wise_probability = 1
-    futuristic_probability = 1
+    for word in model:
+        if word not in cond_probabilities:
+            cond_probabilities[word] = [0, 0]
 
-    for word in words_array:
+        #calculate conditional probabilities P(word|wise) & P(word|prediction)
+        cond_probabilities[word][0] = (model[word][0] + 1)/(sum_wise + len(model))
+        cond_probabilities[word][1] = (model[word][1] + 1)/(sum_pred + len(model))
 
-        count = model.get(word)
+    return cond_probabilities
 
-        if count is None:
-            wise_top = 1
-            futuristic_top = 1
-            
-        wise_top = count[0] + 1
-        futuristic_top = count[1] + 1
+def classify_test_data(test_data_saying, prob_wise, prob_pred, cond_probs):
+    temp_wise = 1
+    temp_pred = 1
+    for word in test_data_saying:
+        if word in model:
+            temp_wise *= cond_probs[word][0]
+            temp_pred *= cond_probs[word][1]
 
+    temp_wise *= prob_wise
+    temp_pred *= prob_pred
 
-
-        wise_bot = wise_count + len(model)
-        futuristic_bot = futuristic_count + len(model)
-
-        wise_probability *= wise_top / wise_bot
-        futuristic_probability *= futuristic_top / futuristic_bot
-
-        print(wise_top)
+    if temp_wise > temp_pred:
+        return 0
+    return 1
 
 if __name__ == '__main__':
     model = {}
 
-    traindata_file = "traindata.txt"
-    trainlabel_file = "trainlabels.txt"
-    train_data, train_labels = open_files(traindata_file, trainlabel_file)
-    train_model, train_wise_count, train_futuristic_count = create_model(train_data, train_labels)
+    if(len(sys.argv) == 2):
+        name = sys.argv[1]
+    else:
+        print ('Error! Input requires: python3 SmartClient.py train/test')
+        sys.exit()
+
+    if name == 'train':
 
 
-    testdata_file = "testdata.txt"
-    testlabel_file = "testlabels.txt"
-    test_data, test_labels = open_files(testdata_file, testlabel_file)
-    test_model, test_wise_count, test_futuristic_count = create_model(test_data, test_labels)
+        train_data, train_labels = get_data("traindata.txt", "trainlabels.txt")
+        train_model, train_wise_count, train_prediction_count, tot_wise_words, tot_pred_words = train_model(train_data, train_labels)
 
-    for i, sentence in enumerate(test_data):
-        words_array = sentence.split(' ')
-        calc_probability(test_model, test_wise_count, test_futuristic_count, words_array)
+        #P(c) & P(-c)
+        probablility_wise = train_wise_count/(train_wise_count + train_prediction_count)
+        probablility_prediction = train_prediction_count/(train_wise_count + train_prediction_count)
+
+        #P(Chinese|c),... etc
+        conditional_probabilities = {}
+        conditional_probabilities = calc_cond_probabilities(train_model, train_wise_count, train_prediction_count, tot_wise_words, tot_pred_words)
+
+        # Setup test data
+        test_data, test_labels = get_data("testdata.txt", "testlabels.txt")
+
+        result = []
+        for i, saying in enumerate(train_data):
+            words = saying.split(' ')
+            result.append(classify_test_data(words, probablility_wise, probablility_prediction, conditional_probabilities))
+
+        correct = 0
+        incorrect = 0
+        for i, j in zip(result, train_labels):
+            if int(i) == int(j):
+                correct += 1
+            else:
+                incorrect += 1
+
+        print("Accuracy: " + str((correct/len(train_labels))*100))
+
+    elif name == 'test':
+
+        train_data, train_labels = get_data("traindata.txt", "trainlabels.txt")
+        train_model, train_wise_count, train_prediction_count, tot_wise_words, tot_pred_words = train_model(train_data, train_labels)
+
+        #P(c) & P(-c)
+        probablility_wise = train_wise_count/(train_wise_count + train_prediction_count)
+        probablility_prediction = train_prediction_count/(train_wise_count + train_prediction_count)
+
+        #P(Chinese|c),... etc
+        conditional_probabilities = {}
+        conditional_probabilities = calc_cond_probabilities(train_model, train_wise_count, train_prediction_count, tot_wise_words, tot_pred_words)
+
+        # Setup test data
+        test_data, test_labels = get_data("testdata.txt", "testlabels.txt")
+
+        result = []
+        for i, saying in enumerate(test_data):
+            words = saying.split(' ')
+            result.append(classify_test_data(words, probablility_wise, probablility_prediction, conditional_probabilities))
+
+        correct = 0
+        incorrect = 0
+        for i, j in zip(result, test_labels):
+            if int(i) == int(j):
+                correct += 1
+            else:
+                incorrect += 1
+
+        print("Accuracy: " + str((correct/len(test_labels))*100))
 
 
-    print(train_model)
-    print(test_model)
-
-
-    # print(data)
-    # print("\n")
-    # print(label)
+    else:
+        print ('Error! Input requires: python3 SmartClient.py train/test')
+        sys.exit()
